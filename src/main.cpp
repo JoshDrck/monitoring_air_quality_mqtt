@@ -8,13 +8,15 @@
 #include <Multichannel_Gas_GMXXX.h>
 #include <Adafruit_BME680.h>
 #include <MQ131.h>
+#include <WifiManager.h>
+
 #define HOSTNAME "ESP32"
 #define AOUT 35
+
 WiFiClient espClient;
 PubSubClient client(espClient);
 
 // Wifi credentials
-
 const char *ssid = "Josh";
 const char *pass = "Lorejo1999";
 const char *temp = "10";
@@ -73,9 +75,7 @@ void initBME688()
 void initMQ131()
 {
   MQ131.begin(2, AOUT, LOW_CONCENTRATION, 680000);
-
   MQ131.setR0(364740.87);
-
   MQ131.setTimeToRead(1);
 
   Serial.println("Calibration parameters");
@@ -176,6 +176,30 @@ void mqtt_connect()
   }
 }
 
+void reconnect()
+{
+  // Loop until we're reconnected
+  while (!client.connected())
+  {
+    Serial.print("Attempting MQTT connection...");
+    // Attempt to connect
+    if (client.connect(HOSTNAME, MQTT_USER, MQTT_PASS))
+    {
+      Serial.println("connected");
+    }
+    else
+    {
+      Serial.print("failed, rc=");
+      Serial.print(client.state());
+      Serial.println(" try again in 5 seconds");
+      // Wait 5 seconds before retrying
+      delay(5000);
+    }
+  }
+}
+
+bool res;
+
 void setup()
 {
   // Codigo de inicio
@@ -189,29 +213,43 @@ void setup()
   WiFi.mode(WIFI_AP_STA);
   WiFi.begin(ssid, pass);
 
-  while (WiFi.status() != WL_CONNECTED)
+  WiFiManager wm;
+
+  wm.resetSettings();
+
+  res = wm.autoConnect("AutoConnectAP", "airquality");
+
+  if (!res)
   {
-    Serial.print(".");
-    delay(1000);
+    Serial.println("Error al conectar");
   }
-  Serial.println();
+  else
+  {
+    Serial.println("Conexión correcta");
+    Serial.println();
 
-  // Resultado de la conección
-  Serial.print("Connected to ");
-  Serial.println(ssid);
-  Serial.println("");
+    // Resultado de la conección
+    Serial.print("Connected to ");
+    Serial.println(ssid);
+    Serial.println("");
 
-  // Inicio de conexión con MQTT server
-  client.setServer(MQTT_HOST, MQTT_PORT);
-  mqtt_connect();
+    // Inicio de conexión con MQTT server
+    client.setServer(MQTT_HOST, MQTT_PORT);
+    mqtt_connect();
 
-  // Inicioalizacion de los sensores
-  Serial.println("Arranque de los sensores...");
-  pms.init();
-  I2CGROVE.begin(I2C_SDA, I2C_SCL);
-  gas.begin(I2CGROVE, 0x08);
-  initBME688();
-  initMQ131();
+    // Inicioalizacion de los sensores
+    Serial.println("Arranque de los sensores...");
+    pms.init();
+    I2CGROVE.begin(I2C_SDA, I2C_SCL);
+    gas.begin(I2CGROVE, 0x08);
+    initBME688();
+    initMQ131();
+  }
+  // while (WiFi.status() != WL_CONNECTED)
+  // {
+  //   Serial.print(".");
+  //   delay(1000);
+  // }
 }
 
 void loop()
