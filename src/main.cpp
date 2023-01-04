@@ -272,5 +272,8 @@ void loop()
   char buffer[128];
   size_t n = serializeJson(doc, buffer);
   client.publish("air_quality/environments/in", buffer, n);
-  delay(1000);
+  for (int count = 0; count < 60; count++)
+  {
+    delay(1000);
+  }
 }
